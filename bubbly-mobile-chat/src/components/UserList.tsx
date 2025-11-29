@@ -38,38 +38,67 @@ const UserList: React.FC<UserListProps> = ({ onUserSelect, onLogout, onEditProfi
   }, [])
   
 
+useEffect(() => {
+  socket.on("lastMessageUpdate", (data) => {
+    console.log("lastMessageUpdate", data);
 
-  useEffect(() => {
-    socket.on("lastMessageUpdate", (data) => {
-      setUsers((prev) => {
-        const exists = prev.some(
-          (user) =>
-            user.userId === data.senderId || user.userId === data.receiverId
+    setUsers((prev) => {
+      const exists = prev.some(
+        (user) =>
+          user.userId === data.senderId || user.userId === data.receiverId
+      );
+
+      let updatedUsers;
+
+      if (exists) {
+        // 👉 UPDATE existing user lastMessage
+        updatedUsers = prev.map((user) =>
+          user.userId === data.senderId || user.userId === data.receiverId
+            ? {
+                ...user,
+                lastMessage: {
+                  message: data.message,
+                  createdAt: data.timestamp, // 🔥 store timestamp too
+                },
+              }
+            : user
         );
-
-        if (exists) {
-          // UPDATE existing user
-          return prev.map((user) =>
-            user.userId === data.senderId || user.userId === data.receiverId
-              ? { ...user, lastMessage: { message: data.message } }
-              : user
-          );
-        } else {
-          // ADD new user (your required ELSE condition)
-          return [
-            ...prev,
-            {
-              name: data.name,
-              userId: data.senderId,
-              lastMessage: { message: data.message },
+      } else {
+        // 👉 ADD new user in the list
+        updatedUsers = [
+          ...prev,
+          {
+            name: data.name,
+            userId: data.senderId,
+            lastMessage: {
+              message: data.message,
+              createdAt: data.timestamp, // 🔥 store timestamp
             },
-          ];
-        }
+          },
+        ];
+      }
+
+      // 👉🔥 SORT USERS BY LATEST MESSAGE
+      updatedUsers.sort((a, b) => {
+        const timeA = a.lastMessage?.createdAt
+          ? new Date(a.lastMessage.createdAt).getTime()
+          : 0;
+        const timeB = b.lastMessage?.createdAt
+          ? new Date(b.lastMessage.createdAt).getTime()
+          : 0;
+
+        return timeB - timeA; // latest first
       });
-      receiveSound.play();
+
+      return updatedUsers;
     });
-    return () => socket.off("lastMessageUpdate");
-  }, []);
+
+    receiveSound.play();
+  });
+
+  return () => socket.off("lastMessageUpdate");
+}, []);
+
 
   useEffect(() => {
     const getConnectedUsers = async () => {

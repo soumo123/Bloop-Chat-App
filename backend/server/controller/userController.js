@@ -61,9 +61,8 @@ const signIn = async (req, res) => {
             _id: user._id,
             userId: user.userId,
             email: user.email,
-            image: user.image,
-            mobile: user.mobile,
-            type: user.type
+            profile: user.profile,
+            phone: user.phone,
 
         }
 
@@ -248,7 +247,11 @@ const getAllConnectedusers = async (req, res) => {
                     : null
             });
         }
-
+        finalData.sort((a, b) => {
+            const timeA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+            const timeB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+            return timeB - timeA; // Descending (latest first)
+        });
         return res.status(200).send({
             success: true,
             mode: "connected_with_last_messages",
