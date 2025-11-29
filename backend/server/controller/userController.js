@@ -230,7 +230,7 @@ const getAllConnectedusers = async (req, res) => {
                 ]
             })
                 .sort({ createdAt: -1 })
-                .select("message createdAt seen");
+                .select("message messageType createdAt seen");
 
             finalData.push({
                 id: user._id,
@@ -240,7 +240,7 @@ const getAllConnectedusers = async (req, res) => {
                 profile: user.profile,
                 lastMessage: lastMessage
                     ? {
-                        message: lastMessage.message,
+                        message: lastMessage.messageType==="image" ? "image":lastMessage.message,
                         seen: lastMessage.seen,
                         createdAt: lastMessage.createdAt,
                     }
@@ -411,6 +411,40 @@ const updateProfile = async (req, res) => {
 }
 
 
+const sendImage = async (req, res) => {
+    const { senderId, receiverId, roomId } = req.body;
+
+    try {
+        if (!senderId) {
+            return res.status(400).send({ message: "SenderId missing", success: false });
+        }
+        if (!receiverId) {
+            return res.status(400).send({ message: "ReceiverId missing", success: false });
+        }
+        if (!roomId) {
+            return res.status(400).send({ message: "RoomId missing", success: false });
+        }
+        const url = req.file.path;
+        const message = await Message.create({
+            senderId,
+            receiverId,
+            roomId,
+            message: "",
+            messageType: "image",
+            fileUrl: url,
+            seen: false,
+            seenAt: null,
+        });
+
+        return res.status(200).send({sucess:true,message:"File send",message:message})
+
+    } catch (error) {
+        return res.status(500).send({ message: "Internal Server Error", error: error.stack });
+
+    }
+}
+
+
 export {
     signUp,
     signIn,
@@ -420,5 +454,6 @@ export {
     getMessages,
     markMessagesSeen,
     uploadProfilePic,
-    updateProfile
+    updateProfile,
+    sendImage
 }

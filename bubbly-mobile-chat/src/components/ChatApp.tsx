@@ -2,11 +2,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Send, LogOut, User, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Send, LogOut, User, ArrowLeft, Paperclip } from 'lucide-react';
 import axiosInstance from '@/axiosInstance';
 import socket from '@/socket';
 import { useSelector } from 'react-redux';
 import { RootState } from "../store";
+import axiosInstanceFileUpload from '@/axiosInstanceFileUpload';
+import { useAlert } from 'react-alert'
 
 interface Message {
   _id: number;
@@ -25,7 +27,7 @@ interface ChatUser {
   name: string;
   status: 'online' | 'offline';
   userId: string
-  profile:Profile
+  profile: Profile
 }
 
 interface ChatAppProps {
@@ -53,7 +55,9 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
   const receiveSound = new Audio("/happy-pop-3-185288.mp3");
   const sendSound = new Audio("/message-envoye-iphone-apple-391098.mp3");
   const senderId = localStorage.getItem("userId")
-  const userDetails = useSelector((state:RootState) => state?.userReducer?.user)
+  const userDetails = useSelector((state: RootState) => state?.userReducer?.user)
+  const alert = useAlert()
+  
   const getAllMessages = async () => {
     try {
       const res = await axiosInstance.get(`/fetchmessages?senderId=${senderId}&receiverId=${selectedUser.userId}`)
@@ -89,7 +93,7 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    const json:MessagePayload = {
+    const json: MessagePayload = {
       senderId: senderId,
       recreceiverId: selectedUser.userId,
       recieverName: userDetails?.username,
@@ -159,6 +163,41 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
       }
     })
   }, [])
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 1. upload to backend (much safer)
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("senderId", senderId!);
+    formData.append("receiverId", selectedUser.userId);
+    formData.append("roomId", roomId);
+
+    try {
+      const res = await axiosInstanceFileUpload.post(`/sendImage`, formData).then((res) => {
+        if (res.status === 200) {
+          alert.success("Image sent")
+          sendSound.play()
+          const savedMsg = res.data.message; // message saved in DB + file URL stored
+          socket.emit("sendMessage", savedMsg);
+        }
+      }).catch((err)=>{
+          alert.error(err.response.data.message)
+      });
+
+
+
+    } catch (err) {
+      console.error("Image upload failed", err);
+    }
+
+    // Reset input so same image can be selected again
+    e.target.value = "";
+  };
+
+
   useEffect(() => {
     if (senderId) {
       socket.emit("joinUser", senderId);
@@ -226,7 +265,15 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
                 : 'bg-white border border-gray-200 text-gray-800'
                 }`}
             >
-              <p className="text-sm">{message.message}</p>
+              {message.messageType === "image" ? (
+                <img
+                  src={message.fileUrl}
+                  alt="sent-file"
+                  className="w-48 rounded-lg border"
+                />
+              ) : (
+                <p className="text-sm">{message.message}</p>
+              )}
               <p
                 className={`text-xs mt-1 ${message.senderId === senderId ? 'text-blue-100' : 'text-gray-500'
                   }`}
@@ -242,6 +289,19 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
       {/* Message Input */}
       <div className="p-4 bg-white border-t border-gray-200">
         <form onSubmit={handleSendMessage} className="flex space-x-2">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+            id="imageUpload"
+          />
+
+          <Button variant="ghost" type="button" className="rounded-full">
+            <label htmlFor="imageUpload" className="cursor-pointer flex items-center">
+              <Paperclip className="w-5 h-5" />
+            </label>
+          </Button>
           <Input
             type="text"
             placeholder="Type a message..."

@@ -342,7 +342,7 @@ useEffect(() => {
                           </div>
                           {user.lastMessage && (
                             <p className="text-sm text-gray-500 truncate mt-1">
-                              {user.lastMessage.message}
+                              {user.lastMessage.message==="image"?"📷 Photo":user.lastMessage.message}
                             </p>
                           )}
                         </div>

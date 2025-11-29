@@ -64,7 +64,7 @@ const startServer = async () => {
         io.emit("lastMessageUpdate", {
           senderId: data.senderId,
           receiverId: data.receiverId,
-          message: data.message,
+           message: data.messageType === "image" ? "📷 Image" : data.message,
           name:data.recieverName,
           timestamp: new Date()
         });
