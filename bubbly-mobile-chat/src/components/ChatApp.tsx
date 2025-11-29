@@ -57,7 +57,7 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
   const senderId = localStorage.getItem("userId")
   const userDetails = useSelector((state: RootState) => state?.userReducer?.user)
   const alert = useAlert()
-  
+
   const getAllMessages = async () => {
     try {
       const res = await axiosInstance.get(`/fetchmessages?senderId=${senderId}&receiverId=${selectedUser.userId}`)
@@ -81,6 +81,8 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [onUsers, setOnusers] = useState([])
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const roomId = [senderId, selectedUser.userId].sort().join("_");
   const scrollToBottom = () => {
@@ -183,8 +185,8 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
           const savedMsg = res.data.message; // message saved in DB + file URL stored
           socket.emit("sendMessage", savedMsg);
         }
-      }).catch((err)=>{
-          alert.error(err.response.data.message)
+      }).catch((err) => {
+        alert.error(err.response.data.message)
       });
 
 
@@ -269,7 +271,11 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
                 <img
                   src={message.fileUrl}
                   alt="sent-file"
-                  className="w-48 rounded-lg border"
+                  className="w-48 rounded-lg border cursor-pointer"
+                  onClick={() => {
+                    setPreviewImage(message.fileUrl);
+                    setShowPreview(true);
+                  }}
                 />
               ) : (
                 <p className="text-sm">{message.message}</p>
@@ -285,6 +291,18 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
         ))}
         <div ref={messagesEndRef} />
       </div>
+      {showPreview && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50"
+          onClick={() => setShowPreview(false)}
+        >
+          <img
+            src={previewImage!}
+            className="max-w-full max-h-full rounded-lg shadow-lg"
+            alt="preview"
+          />
+        </div>
+      )}
 
       {/* Message Input */}
       <div className="p-4 bg-white border-t border-gray-200">
