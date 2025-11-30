@@ -218,7 +218,7 @@ const getAllConnectedusers = async (req, res) => {
 
         const connectedUsers = await User.find({
             userId: { $in: connectedIds }
-        }).select("userId email username profile");
+        }).select("userId email username profile about phone created_at");
 
         const finalData = [];
 
@@ -238,6 +238,9 @@ const getAllConnectedusers = async (req, res) => {
                 name: user.username,
                 email: user.email,
                 profile: user.profile,
+                about:user.about,
+                phone:user.phone,
+                created_at:user.created_at,
                 lastMessage: lastMessage
                     ? {
                         message: lastMessage.messageType==="image" ? "image":lastMessage.message,

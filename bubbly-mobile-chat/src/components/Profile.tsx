@@ -32,6 +32,7 @@ const Profile: React.FC<UserProfileProps> = ({ user, onBack }) => {
             .toUpperCase()
             .slice(0, 2);
     };
+    console.log("userrr",user)
     return (
         <div className="h-screen bg-muted/20 flex flex-col">
             {/* Header */}
@@ -69,8 +70,8 @@ const Profile: React.FC<UserProfileProps> = ({ user, onBack }) => {
                             </AvatarFallback>
 
                         </Avatar>
-                        <div className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-4 border-card ${user.status === 'online' ? 'bg-green-500' : 'bg-muted-foreground'
-                            }`} />
+                        {/* <div className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-4 border-card ${user.status === 'online' ? 'bg-green-500' : 'bg-muted-foreground'
+                            }`} /> */}
                     </div>
                     <h1 className="text-foreground text-2xl font-semibold mt-4">{user.name}</h1>
                     <p className="text-muted-foreground text-sm mt-1">
@@ -117,17 +118,17 @@ const Profile: React.FC<UserProfileProps> = ({ user, onBack }) => {
                             </div>
 
                             {/* Location */}
-                            <div className="profile-info-item flex items-center px-4 py-4 group">
+                            {/* <div className="profile-info-item flex items-center px-4 py-4 group">
                                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 group-hover:bg-primary/20 transition-colors">
                                     <MapPin className="w-5 h-5 text-primary" />
                                 </div>
-                                {/* <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-0">
                                     <p className="text-xs text-muted-foreground font-medium">Location</p>
                                     <p className="text-sm text-foreground mt-0.5 truncate">
                                         {user.location || 'San Francisco, CA'}
                                     </p>
-                                </div> */}
-                            </div>
+                                </div>
+                            </div> */}
 
                             {/* Joined Date */}
                             <div className="profile-info-item flex items-center px-4 py-4 group">

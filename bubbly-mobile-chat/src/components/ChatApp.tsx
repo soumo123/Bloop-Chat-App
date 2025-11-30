@@ -51,6 +51,7 @@ interface MessagePayload {
 
 const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onProfileClick }) => {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const typingTimer = useRef<NodeJS.Timeout | null>(null);
   const receiveSound = new Audio("/happy-pop-3-185288.mp3");
   const sendSound = new Audio("/message-envoye-iphone-apple-391098.mp3");
@@ -169,7 +170,7 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+    setUploadingImage(true);
     // 1. upload to backend (much safer)
     const formData = new FormData();
     formData.append("file", file);
@@ -182,6 +183,7 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
         if (res.status === 200) {
           alert.success("Image sent")
           sendSound.play()
+          setUploadingImage(false); // hide loader
           const savedMsg = res.data.message; // message saved in DB + file URL stored
           socket.emit("sendMessage", savedMsg);
         }
@@ -220,7 +222,7 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center" style={{ cursor: "pointer" }} onClick={onProfileClick}>
               {selectedUser?.profile?.url ? (
                 <img
                   src={selectedUser.profile.url}
@@ -243,14 +245,14 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
               </p>
             </div>
           </div>
-          <Button
+          {/* <Button
             onClick={onLogout}
             variant="ghost"
             size="sm"
             className="text-white hover:bg-white/20"
           >
             <LogOut className="w-5 h-5" />
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -289,6 +291,13 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
             </div>
           </div>
         ))}
+        {uploadingImage && (
+          <div className="flex justify-end animate-pulse">
+            <div className="max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm bg-gradient-to-r from-blue-400 to-blue-500 text-white opacity-70">
+              <p className="text-sm">Sending image...</p>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
       {showPreview && (
@@ -337,6 +346,8 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
           />
           <Button
             type="submit"
+            disabled={!newMessage ? true :false}
+            style={{cursor:"pointer"}}
             className="rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 px-6 transition-all duration-200 hover:scale-105"
           >
             <Send className="w-5 h-5" />

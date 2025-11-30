@@ -24,6 +24,7 @@ interface User {
   status: 'online' | 'offline';
   lastMessage?: string;
   username:string,
+  about:string,
   profile:ProfileProps
 }
 
