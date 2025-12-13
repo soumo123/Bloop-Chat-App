@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Send, LogOut, User, ArrowLeft, Paperclip } from 'lucide-react';
+import { MessageSquare, Send, LogOut, User, ArrowLeft, Paperclip, Check } from 'lucide-react';
 import axiosInstance from '@/axiosInstance';
 import socket from '@/socket';
 import { useSelector } from 'react-redux';
@@ -16,6 +16,8 @@ interface Message {
   message: string;
   sender: 'user' | 'other';
   timestamp: Date;
+  seen: boolean,
+  unreadmessage: number
 }
 interface Profile {
   url: string;
@@ -46,7 +48,8 @@ interface MessagePayload {
   messageType: "text" | "image" | "file"; // if you have multiple types
   fileUrl: string | null;
   seen: boolean;
-  seenAt: string | null;
+  seenAt: Date | null;
+  unread:number
 }
 
 const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onProfileClick }) => {
@@ -57,6 +60,8 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
   const sendSound = new Audio("/message-envoye-iphone-apple-391098.mp3");
   const senderId = localStorage.getItem("userId")
   const userDetails = useSelector((state: RootState) => state?.userReducer?.user)
+  const [checkMark, setCheckMark] = useState(false)
+  const [roomUsers, setRoomUsers] = useState<string[]>([]);
   const alert = useAlert()
 
   const getAllMessages = async () => {
@@ -96,6 +101,7 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    const isReceiverPresent = roomUsers.includes(selectedUser.userId);
     const json: MessagePayload = {
       senderId: senderId,
       recreceiverId: selectedUser.userId,
@@ -104,8 +110,9 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
       message: newMessage,
       messageType: "text",
       fileUrl: null,
-      seen: false,
-      seenAt: null,
+      seen: isReceiverPresent,
+      seenAt: isReceiverPresent ? new Date() : null,
+      unread:1
     }
     socket.emit('sendMessage', json)
     const res = await axiosInstance.post(`/sendmessage?senderId=${senderId}&receiverId=${selectedUser?.userId}`, json)
@@ -159,13 +166,51 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
   useEffect(() => {
     socket.emit("joinRoom", roomId);
     socket.on('receiveMessage', (data) => {
-      console.log("data", data)
+      console.log("receiveMessage", data)
       setMessages(prev => [...prev, data]);
       if (data.senderId !== senderId) {
         receiveSound.play();
       }
     })
+
   }, [])
+
+
+
+  useEffect(() => {
+    socket.on("roomUsers", ({ users }) => {
+      setRoomUsers(users);
+    });
+
+    return () => socket.off("roomUsers");
+  }, []);
+
+  useEffect(() => {
+    socket.emit("joinRoom", { roomId, userId: senderId });
+
+    return () => {
+      socket.emit("leaveRoom", { roomId, userId: senderId });
+    };
+  }, [roomId]);
+
+  useEffect(() => {
+   markMessageSeen()
+  }, [roomId]);
+
+  const markMessageSeen = async () => {
+    try {
+      const result = await axiosInstance.put(`/seenmessage?senderId=${senderId}&receiverId=${selectedUser.userId}`)
+      if (result.status === 200) {
+        console.log(`Messaged seened by Reciever ${selectedUser.name}`)
+      }
+
+    } catch (error) {
+      console.log(error)
+      console.log(`Messaged seened error by Reciever ${selectedUser.name}`)
+
+    }
+  }
+
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -200,6 +245,14 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
     // Reset input so same image can be selected again
     e.target.value = "";
   };
+  useEffect(() => {
+    socket.emit("checkPresents", {
+      roomId: roomId,
+      senderId: senderId,
+      recieverId: selectedUser.userId
+    })
+  }, [selectedUser.userId])
+
 
 
   useEffect(() => {
@@ -207,6 +260,7 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
       socket.emit("joinUser", senderId);
     }
   }, [senderId]);
+  console.log("messages-new", messages)
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
@@ -245,14 +299,6 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
               </p>
             </div>
           </div>
-          {/* <Button
-            onClick={onLogout}
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20"
-          >
-            <LogOut className="w-5 h-5" />
-          </Button> */}
         </div>
       </div>
 
@@ -280,14 +326,27 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
                   }}
                 />
               ) : (
-                <p className="text-sm">{message.message}</p>
+                <>
+                  <p className="text-sm">{message.message}</p>
+                  {message.senderId === senderId && (
+                    <div className="flex justify-end items-center gap-1 mt-1">
+                      {!message.seen ? (
+                        <Check className="w-4 h-4 text-gray-400" />
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4 text-blue-400 -mr-2" />
+                          <Check className="w-4 h-4 text-blue-400" />
+                        </>
+                      )}
+
+
+                    </div>
+                  )}
+                </>
+
               )}
-              <p
-                className={`text-xs mt-1 ${message.senderId === senderId ? 'text-blue-100' : 'text-gray-500'
-                  }`}
-              >
-                {/* {formatTime(message.createdAt)} */}
-              </p>
+
+
             </div>
           </div>
         ))}
@@ -346,8 +405,8 @@ const ChatApp: React.FC<ChatAppProps> = ({ selectedUser, onBack, onLogout, onPro
           />
           <Button
             type="submit"
-            disabled={!newMessage ? true :false}
-            style={{cursor:"pointer"}}
+            disabled={!newMessage ? true : false}
+            style={{ cursor: "pointer" }}
             className="rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 px-6 transition-all duration-200 hover:scale-105"
           >
             <Send className="w-5 h-5" />

@@ -32,6 +32,10 @@ const messageSchema = new mongoose.Schema({
         default: null
     },
 
+    unreadmessage:{
+        type:Number,
+        default:0
+    },
     seen: {
         type: Boolean,
         default: false

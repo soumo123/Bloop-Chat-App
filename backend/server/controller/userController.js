@@ -230,22 +230,29 @@ const getAllConnectedusers = async (req, res) => {
                 ]
             })
                 .sort({ createdAt: -1 })
-                .select("message messageType createdAt seen");
+                .select("message messageType senderId createdAt seen");
 
+            const unreadCount = await Message.countDocuments({
+                senderId: user.userId,
+                receiverId: userId,
+                seen: false
+            });
             finalData.push({
                 id: user._id,
                 userId: user.userId,
                 name: user.username,
                 email: user.email,
                 profile: user.profile,
-                about:user.about,
-                phone:user.phone,
-                created_at:user.created_at,
+                about: user.about,
+                phone: user.phone,
+                created_at: user.created_at,
+                unread:unreadCount,
                 lastMessage: lastMessage
                     ? {
-                        message: lastMessage.messageType==="image" ? "image":lastMessage.message,
+                        message: lastMessage.messageType === "image" ? "image" : lastMessage.message,
                         seen: lastMessage.seen,
                         createdAt: lastMessage.createdAt,
+                        senderId: lastMessage.senderId
                     }
                     : null
             });
@@ -439,13 +446,15 @@ const sendImage = async (req, res) => {
             seenAt: null,
         });
 
-        return res.status(200).send({sucess:true,message:"File send",message:message})
+        return res.status(200).send({ sucess: true, message: "File send", message: message })
 
     } catch (error) {
         return res.status(500).send({ message: "Internal Server Error", error: error.stack });
 
     }
 }
+
+
 
 
 export {

@@ -8,6 +8,7 @@ import socket from '@/socket';
 import Skeleton from "@mui/material/Skeleton";
 import Box from "@mui/material/Box";
 import Settings from './Settings';
+import { Check, CheckCheck } from "lucide-react";
 
 interface User {
   id: number;
@@ -33,71 +34,66 @@ const UserList: React.FC<UserListProps> = ({ onUserSelect, onLogout, onEditProfi
   const userId = localStorage.getItem("userId")
   const receiveSound = new Audio("/happy-pop-3-185288.mp3");
 
+
   useEffect(() => {
-   
-  }, [])
-  
+    socket.on("lastMessageUpdate", (data) => {
+      console.log("lastMessageUpdate", data);
+      setUsers((prev) => {
+        const exists = prev.some(
+          (user) =>
+            user.userId === data.senderId || user.userId === data.receiverId
+        );
 
-useEffect(() => {
-  socket.on("lastMessageUpdate", (data) => {
-    console.log("lastMessageUpdate", data);
+        let updatedUsers;
 
-    setUsers((prev) => {
-      const exists = prev.some(
-        (user) =>
-          user.userId === data.senderId || user.userId === data.receiverId
-      );
-
-      let updatedUsers;
-
-      if (exists) {
-        // 👉 UPDATE existing user lastMessage
-        updatedUsers = prev.map((user) =>
-          user.userId === data.senderId || user.userId === data.receiverId
-            ? {
+        if (exists) {
+          // 👉 UPDATE existing user lastMessage
+          updatedUsers = prev.map((user) =>
+            user.userId === data.senderId || user.userId === data.receiverId
+              ? {
                 ...user,
+                unread: user.unread + data.unread,
                 lastMessage: {
                   message: data.message,
                   createdAt: data.timestamp, // 🔥 store timestamp too
                 },
               }
-            : user
-        );
-      } else {
-        // 👉 ADD new user in the list
-        updatedUsers = [
-          ...prev,
-          {
-            name: data.name,
-            userId: data.senderId,
-            lastMessage: {
-              message: data.message,
-              createdAt: data.timestamp, // 🔥 store timestamp
+              : user
+          );
+        } else {
+          // 👉 ADD new user in the list
+          updatedUsers = [
+            ...prev,
+            {
+              name: data.name,
+              userId: data.senderId,
+              unread: data.unread,
+              lastMessage: {
+                message: data.message,
+                createdAt: data.timestamp, // 🔥 store timestamp
+              },
             },
-          },
-        ];
-      }
+          ];
+        }
 
-      // 👉🔥 SORT USERS BY LATEST MESSAGE
-      updatedUsers.sort((a, b) => {
-        const timeA = a.lastMessage?.createdAt
-          ? new Date(a.lastMessage.createdAt).getTime()
-          : 0;
-        const timeB = b.lastMessage?.createdAt
-          ? new Date(b.lastMessage.createdAt).getTime()
-          : 0;
+        // 👉🔥 SORT USERS BY LATEST MESSAGE
+        updatedUsers.sort((a, b) => {
+          const timeA = a.lastMessage?.createdAt
+            ? new Date(a.lastMessage.createdAt).getTime()
+            : 0;
+          const timeB = b.lastMessage?.createdAt
+            ? new Date(b.lastMessage.createdAt).getTime()
+            : 0;
 
-        return timeB - timeA; // latest first
+          return timeB - timeA; // latest first
+        });
+
+        return updatedUsers;
       });
-
-      return updatedUsers;
+      receiveSound.play();
     });
-
-    receiveSound.play();
-  });
-
-  return () => socket.off("lastMessageUpdate");
-}, []);
+    return () => socket.off("lastMessageUpdate");
+  }, []);
 
 
   useEffect(() => {
@@ -340,11 +336,31 @@ useEffect(() => {
 
                             </span>
                           </div>
-                          {user.lastMessage && (
-                            <p className="text-sm text-gray-500 truncate mt-1">
-                              {user.lastMessage.message==="image"?"📷 Photo":user.lastMessage.message}
-                            </p>
-                          )}
+                          <div className="flex items-center justify-between mt-1">
+                            <div className="flex items-center gap-1 min-w-0">
+                              {user.lastMessage.senderId === userId && (
+                                user.lastMessage.seen ? (
+                                  <CheckCheck className="w-4 h-4 text-blue-400" />
+                                ) : (
+                                  <CheckCheck className="w-4 h-4 text-gray-400" />
+                                )
+                              )}
+
+                              <p className="text-sm text-gray-500 truncate">
+                                {user.lastMessage.message === "image"
+                                  ? "📷 Photo"
+                                  : user.lastMessage.message}
+                              </p>
+                            </div>
+
+                            {/* 🔥 UNREAD BADGE */}
+                            {user.unread > 0 && (
+                              <span className="ml-2 min-w-[20px] h-5 px-1 flex items-center justify-center 
+                     bg-green-500 text-white text-xs font-medium rounded-full">
+                                {user.unread}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -12,7 +12,7 @@ router.get("/getuser", getUser);
 router.post("/sendmessage", sendMessage);
 router.get("/getusers",getAllConnectedusers);
 router.get("/fetchmessages",getMessages);
-router.get("/seenmessage",markMessagesSeen);
+router.put("/seenmessage",markMessagesSeen);
 
 router.post("/uploadprofile",uplaod.single("file"),uploadProfilePic)
 router.post("/sendimage",uplaod.single("file"),sendImage)

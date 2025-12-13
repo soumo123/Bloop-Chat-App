@@ -24,12 +24,47 @@ const startServer = async () => {
     });
     const onlineUsers = new Map();
     let onUsers = []
+    const activeRooms = new Map();
     io.on("connection", (socket) => {
 
       socket.on("joinUser", (userId) => {
         socket.join(userId);      // personal room
-        console.log("joinUser",userId)
+        console.log("joinUser", userId)
       });
+      //join room
+      socket.on("joinRoom", ({ roomId, userId }) => {
+        socket.join(roomId);
+
+        if (!activeRooms.has(roomId)) {
+          activeRooms.set(roomId, new Set());
+        }
+
+        activeRooms.get(roomId).add(userId);
+
+        io.to(roomId).emit("roomUsers", {
+          roomId,
+          users: [...activeRooms.get(roomId)]
+        });
+      });
+      //join room
+
+      //leave room
+      socket.on("leaveRoom", ({ roomId, userId }) => {
+        activeRooms.get(roomId)?.delete(userId);
+
+        if (activeRooms.get(roomId)?.size === 0) {
+          activeRooms.delete(roomId);
+        }
+
+        io.to(roomId).emit("roomUsers", {
+          roomId,
+          users: [...(activeRooms.get(roomId) || [])]
+        });
+
+        socket.leave(roomId);
+      });
+      //leave room
+
 
       //Online shows//
       socket.on("online", (userId) => {
@@ -52,11 +87,6 @@ const startServer = async () => {
         socket.to(roomId).emit("stopTyping", { userId });
       });
       //Typing Case///
-
-
-      socket.on("joinRoom", (roomId) => {
-        socket.join(roomId);
-      });
       // Send message
       socket.on("sendMessage", (data) => {
         console.log("Message →", data);
@@ -64,25 +94,35 @@ const startServer = async () => {
         io.emit("lastMessageUpdate", {
           senderId: data.senderId,
           receiverId: data.receiverId,
-           message: data.messageType === "image" ? "📷 Image" : data.message,
-          name:data.recieverName,
-          timestamp: new Date()
+          message: data.messageType === "image" ? "📷 Image" : data.message,
+          name: data.recieverName,
+          seen: false,
+          timestamp: new Date(),
+          unread:data.unread
         });
         io.emit("newMessageUpdate", {
           senderId: data.senderId,
           receiverId: data.receiverId,
           message: data.message,
-          name:data.recieverName,
+          name: data.recieverName,
           timestamp: new Date()
         });
       });
 
+      socket.on("checkPresents", (check) => {
+        console.log("comming checkPresents", check)
+        socket.to(check.roomId).emit("presents", check)
+      })
 
       socket.on("disconnect", () => {
-        if (socket.userId) {
-          onlineUsers.delete(socket.userId);
-          io.emit("updateStatus", { userId: socket.userId, status: "offline" });
-          console.log("❌ User Offline:", socket.userId);
+        for (const [roomId, users] of activeRooms.entries()) {
+          if (users.has(socket.userId)) {
+            users.delete(socket.userId);
+            io.to(roomId).emit("roomUsers", {
+              roomId,
+              users: [...users]
+            });
+          }
         }
       });
     });
